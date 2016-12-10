@@ -1,2 +1,7 @@
 *.pyc
 *.swp*
+Annotations
+Images
+Questions
+QuestionTypes
+*.tfrecords

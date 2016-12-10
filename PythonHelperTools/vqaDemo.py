@@ -7,9 +7,9 @@ import matplotlib.pyplot as plt
 import os
 
 dataDir='../../VQA'
-taskType='OpenEnded'
-dataType='mscoco' # 'mscoco' for real and 'abstract_v002' for abstract
-dataSubType='train2014'
+taskType='MultipleChoice'
+dataType='abstract_v002' # 'mscoco' for real and 'abstract_v002' for abstract
+dataSubType='train2015'
 annFile='%s/Annotations/%s_%s_annotations.json'%(dataDir, dataType, dataSubType)
 quesFile='%s/Questions/%s_%s_%s_questions.json'%(dataDir, taskType, dataType, dataSubType)
 imgDir = '%s/Images/%s/%s/' %(dataDir, dataType, dataSubType)
@@ -26,7 +26,7 @@ anns = vqa.loadQA(annIds)
 randomAnn = random.choice(anns)
 vqa.showQA([randomAnn])
 imgId = randomAnn['image_id']
-imgFilename = 'COCO_' + dataSubType + '_'+ str(imgId).zfill(12) + '.jpg'
+imgFilename = dataType + '_' + dataSubType + '_'+ str(imgId).zfill(12) + '.png'
 if os.path.isfile(imgDir + imgFilename):
 	I = io.imread(imgDir + imgFilename)
 	plt.imshow(I)
@@ -45,7 +45,7 @@ anns = vqa.loadQA(annIds)
 randomAnn = random.choice(anns)
 vqa.showQA([randomAnn])
 imgId = randomAnn['image_id']
-imgFilename = 'COCO_' + dataSubType + '_'+ str(imgId).zfill(12) + '.jpg'
+imgFilename = dataType + '_' + dataSubType + '_'+ str(imgId).zfill(12) + '.png'
 if os.path.isfile(imgDir + imgFilename):
 	I = io.imread(imgDir + imgFilename)
 	plt.imshow(I)
@@ -63,7 +63,7 @@ anns = vqa.loadQA(annIds)
 randomAnn = random.choice(anns)
 vqa.showQA([randomAnn])  
 imgId = randomAnn['image_id']
-imgFilename = 'COCO_' + dataSubType + '_'+ str(imgId).zfill(12) + '.jpg'
+imgFilename = dataType + '_' + dataSubType + '_'+ str(imgId).zfill(12) + '.png'
 if os.path.isfile(imgDir + imgFilename):
 	I = io.imread(imgDir + imgFilename)
 	plt.imshow(I)
