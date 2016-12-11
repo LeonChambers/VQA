@@ -3,15 +3,21 @@
 Preprocesses the raw json data and outputs it in standard TensorFlow format
 """
 import sys
+sys.path.insert(0, "./deep-learning-models")
 import json
 import numpy as np
 import spacy.en
 import random
 import tensorflow as tf
+from vgg16 import VGG16
+from keras.models import Model
+from keras.preprocessing import image
+from imagenet_utils import preprocess_input
 
 K = 1000
 UNKNOWN = 'UNK' # Special token for question words not in the vocabulary
 max_question_length = 20
+image_folder_path = "Images/abstract_v002"
 
 def load_data(data_subtype):
     """
@@ -101,6 +107,9 @@ def encode_answer_choices(questions, atoi):
 def _int64_feature(values):
     return tf.train.Feature(int64_list=tf.train.Int64List(value=values))
 
+def _float_feature(values):
+    return tf.train.Feature(float_list=tf.train.FloatList(value=values))
+
 if __name__ == '__main__':
     training_questions = load_data("train2015")
     validation_questions = load_data("val2015")
@@ -157,10 +166,31 @@ if __name__ == '__main__':
         ]
         print question, choices
 
+    # Get ready to process images with the data
+    base_image_model = VGG16(weights='imagenet')
+    image_model = Model(
+        input=base_image_model.input, 
+        output=base_image_model.get_layer('fc2').output
+    )
+
     # Write the training data to the file system
     print "Writing training data"
     writer = tf.python_io.TFRecordWriter("training_data.tfrecords")
+    training_image_folder_path = image_folder_path + "/train2015"
+    training_image_feature_cache = {}
     for i in range(len(training_question_lengths)):
+        image_id = training_questions[i]["image_id"]
+        if image_id in training_image_feature_cache:
+            image_features = training_image_feature_cache[image_id]
+        else:
+            image_filename = "abstract_v002_train2015_{:012d}.png".format(image_id)
+            image_filepath = training_image_folder_path + "/" + image_filename
+            img = image.load_img(image_filepath, target_size=(224, 224))
+            x = image.img_to_array(img)
+            x = np.expand_dims(x, axis=0)
+            x = preprocess_input(x)
+            image_features = image_model.predict(x)[0]
+            training_image_feature_cache[image_id] = image_features
         example = tf.train.Example(features=tf.train.Features(feature={
             'question': _int64_feature(
                 training_questions_encoded[i].tolist()
@@ -170,10 +200,11 @@ if __name__ == '__main__':
             ]),
             'answer': _int64_feature([
                 np.asscalar(training_answers[i])
-            ])
+            ]),
+            'image_features': _float_feature(image_features.tolist()),
         }))
         writer.write(example.SerializeToString())
-        if i % 1000 == 0:
+        if i % 10 == 0:
             sys.stdout.write("Processing {}/{} ({:02.2f}% done)\r".format(
                 i, len(training_question_lengths), 
                 i*100.0/len(training_question_lengths)
@@ -185,8 +216,25 @@ if __name__ == '__main__':
     # Write the validation data to the file system
     print "Writing validation data"
     writer = tf.python_io.TFRecordWriter("validation_data.tfrecords")
+    validation_image_folder_path = image_folder_path + "/val2015"
+    validation_image_feature_cache = {}
     for i in range(len(validation_question_lengths)):
+        image_id = validation_questions[i]["image_id"]
+        if image_id in validation_image_feature_cache:
+            image_features = validation_image_feature_cache[image_id]
+        else:
+            image_filename = "abstract_v002_val2015_{:012d}.png".format(image_id)
+            image_filepath = training_image_folder_path + "/" + image_filename
+            img = image.load_img(image_filepath, target_size=(224, 224))
+            x = image.img_to_array(img)
+            x = np.expand_dims(x, axis=0)
+            x = preprocess_input(x)
+            image_features = image_model.predict(x)[0]
+            validation_image_feature_cache[image_id] = image_features
         example = tf.train.Example(features=tf.train.Features(feature={
+            'question_id': _int64_feature(
+                validation_questions[i]['question_id']
+            ),
             'question': _int64_feature(
                 validation_questions_encoded[i].tolist()
             ),
@@ -195,10 +243,11 @@ if __name__ == '__main__':
             ]),
             'answer_choices': _int64_feature(
                 validation_answer_choices[i].tolist()
-            )
+            ),
+            'image_features': _float_feature(image_features.tolist()),
         }))
         writer.write(example.SerializeToString())
-        if i % 1000 == 0:
+        if i % 10 == 0:
             sys.stdout.write("Processing {}/{} ({:02.2f}% done)\r".format(
                 i, len(validation_question_lengths), 
                 i*100.0/len(validation_question_lengths)

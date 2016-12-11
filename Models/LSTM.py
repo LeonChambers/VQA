@@ -38,6 +38,7 @@ def read_validation_question():
     features = tf.parse_single_example(
         serialized_example,
         features={
+            'question_id': tf.FixedLenFeature([1], tf.int64),
             'question': tf.FixedLenFeature([max_question_length], tf.int64),
             'question_length': tf.FixedLenFeature([1], tf.int64),
             'answer_choices': tf.FixedLenFeature([1], tf.int64),
