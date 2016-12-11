@@ -206,3 +206,12 @@ if __name__ == '__main__':
             sys.stdout.flush()
     writer.close()
     print ""
+
+    # Write a json file with some metadata
+    metadata = {
+        "input_vocabulary_size": len(vocab),
+        "itow": itow,
+        "itoa": itoa
+    }
+    with open("metadata.json", "w+") as f:
+        json.dump(metadata, f)
