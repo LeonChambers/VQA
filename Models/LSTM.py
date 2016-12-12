@@ -2,11 +2,10 @@
 import json
 import tensorflow as tf
 
-max_question_length = 20
-
 # Parse metadata
 with open("metadata.json", "r") as f:
     _metadata = json.load(f)
+max_question_length = _metadata["max_question_length"]
 input_vocabulary_size = _metadata["input_vocabulary_size"]
 itow = _metadata["itow"]
 itoa = _metadata["itoa"]
@@ -26,10 +25,12 @@ def read_training_question():
             'question': tf.FixedLenFeature([max_question_length], tf.int64),
             'question_length': tf.FixedLenFeature([1], tf.int64),
             'answer': tf.FixedLenFeature([1], tf.int64),
+            'image_features': tf.FixedLenFeature([4096], tf.float64)
         }
     )
     return (
-        features['question'], features['question_length'][0], features['answer'][0]
+        features['question'], features['question_length'][0], 
+        features['answer'][0], features['image_features']
     )
 
 def read_validation_question():
@@ -41,42 +42,37 @@ def read_validation_question():
             'question_id': tf.FixedLenFeature([1], tf.int64),
             'question': tf.FixedLenFeature([max_question_length], tf.int64),
             'question_length': tf.FixedLenFeature([1], tf.int64),
-            'answer_choices': tf.FixedLenFeature([1], tf.int64),
+            'answer_choices': tf.FixedLenFeature([18], tf.int64),
+            'image_features': tf.FixedLenFeatures([4096], tf.float64),
         }
     )
     return (
-        features['question'], features['question_length'][0], features['answer_choices'][0]
+        features['question_id'], features['question'], 
+        features['question_length'][0], features['answer_choices'],
+        features['image_features']
     )
 
-def inputs(train, batch_size, num_epochs):
-    question, question_length, answer = read_training_questions()
-    questions, question_lengths, answers = tf.train.shuffle_batch(
-        [question, question_length, answer], batch_size=batch_size,
-        capacity=1000+3*batch_size, min_after_dequeue=1000
+def training_inputs(batch_size, num_epochs):
+    question, question_length, answer, image_features = read_training_questions()
+    questions, question_lengths, answers, image_features = tf.train.shuffle_batch(
+        [question, question_length, answer, image_features],
+        batch_size=batch_size, capacity=1000+3*batch_size,
+        min_after_dequeue=1000
     )
-    return questions, question_lengths, answers
+    return questions, question_lengths, answers, image_features
 
 word_embedding_size = 300
 lstm_width = 512
 
 # tf Graph input
-questions = tf.placeholder(tf.float32, [None, max_question_length, input_vocabulary_size])
-question_lengths = tf.placeholder(tf.float32, [None])
+questions = tf.placeholder(tf.int32, [None, max_question_length])
+question_lengths = tf.placeholder(tf.int32, [None])
+image_features = tf.placeholder(tf.float32, [None, 4096])
+question_answers = tf.placeholder(tf.float32, [None, 1024])
 
 # word embedding layer
 embedding_weights = tf.Variable(tf.random_normal([input_vocabulary_size, word_embedding_size]))
-embedding_biases = tf.Variable(tf.random_normal([word_embedding_size]))
-word_embedding = tf.tanh(
-    tf.reshape(
-        tf.nn.bias_add(
-            tf.matmul(
-                tf.reshape(questions, [-1, input_vocabulary_size]), embedding_weights
-            ),
-            embedding_biases
-        ),
-        [-1, max_question_length, input_vocabulary_size]
-    )
-)
+word_embedding = tf.nn.embedding_lookup(embedding_weights, questions)
 
 # lstm layer
 output, state = tf.nn.dynamic_rnn(
@@ -106,8 +102,17 @@ fc_lstm_output = tf.tanh(
     )
 )
 
-# TODO: Image channel and merging
-channel_merge_output = fc_lstm_output
+fc_image_weights = tf.Variable(tf.random_normal([4096, 1024]))
+fc_image_biases = tf.Variable(tf.random_normal([1024]))
+fc_image_output = tf.tanh(
+    tf.nn.bias_add(
+        tf.matmul(
+            image_features, fc_image_weights
+        ), fc_image_biases
+    )
+)
+
+channel_merge_output = tf.multiply(fc_lstm_output, fc_image_output)
 
 fc1_weights = tf.Variable(tf.random_normal([1024, 1000]))
 fc1_biases = tf.Variable(tf.random_normal([1000]))
@@ -118,26 +123,36 @@ fc1_output = tf.tanh(
         ), fc1_biases
     )
 )
+fc1_output_drop = tf.nn.dropout(fc1_output, 0.5)
 
 fc2_weights = tf.Variable(tf.random_normal([1000, 1000]))
 fc2_biases = tf.Variable(tf.random_normal([1000]))
 fc2_output = tf.tanh(
     tf.nn.bias_add(
         tf.matmul(
-            fc1_output, fc2_weights
+            fc1_output_drop, fc2_weights
         ), fc2_biases
     )
 )
+fc2_output_drop = tf.nn.dropout(fc2_output_drop, 0.5)
 
 final_weights = tf.Variable(tf.random_normal([1000, 1000]))
 final_biases = tf.Variable(tf.random_normal([1000]))
-final_output = tf.tanh(
-    tf.nn.bias_add(
-        tf.matmul(
-            fc2_output, final_weights
-        ), final_biases
+final_output = tf.nn.softmax(
+    tf.tanh(
+        tf.nn.bias_add(
+            tf.matmul(
+                fc2_output_drop, final_weights
+            ), final_biases
+        )
     )
 )
+
+def run_training():
+    pass
+
+def run_validation():
+    pass
 
 if __name__ == '__main__':
     with tf.Session() as sess:

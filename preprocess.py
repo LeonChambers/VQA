@@ -258,6 +258,7 @@ if __name__ == '__main__':
 
     # Write a json file with some metadata
     metadata = {
+        "max_question_length": max_question_length,
         "input_vocabulary_size": len(vocab),
         "itow": itow,
         "itoa": itoa
