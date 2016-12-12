@@ -129,7 +129,7 @@ if __name__ == '__main__':
     # Shuffle the order of the training questions
     print "Shuffling questions"
     random.seed(123) # Make reproducible
-    random.shuffle(training_questions) 
+    random.shuffle(training_questions)
 
     # Tokenize the questions
     training_questions = tokenize_questions(training_questions)
@@ -169,49 +169,49 @@ if __name__ == '__main__':
     # Get ready to process images with the data
     base_image_model = VGG16(weights='imagenet')
     image_model = Model(
-        input=base_image_model.input, 
+        input=base_image_model.input,
         output=base_image_model.get_layer('fc2').output
     )
 
-    # Write the training data to the file system
-    print "Writing training data"
-    writer = tf.python_io.TFRecordWriter("training_data.tfrecords")
-    training_image_folder_path = image_folder_path + "/train2015"
-    training_image_feature_cache = {}
-    for i in range(len(training_question_lengths)):
-        image_id = training_questions[i]["image_id"]
-        if image_id in training_image_feature_cache:
-            image_features = training_image_feature_cache[image_id]
-        else:
-            image_filename = "abstract_v002_train2015_{:012d}.png".format(image_id)
-            image_filepath = training_image_folder_path + "/" + image_filename
-            img = image.load_img(image_filepath, target_size=(224, 224))
-            x = image.img_to_array(img)
-            x = np.expand_dims(x, axis=0)
-            x = preprocess_input(x)
-            image_features = image_model.predict(x)[0]
-            training_image_feature_cache[image_id] = image_features
-        example = tf.train.Example(features=tf.train.Features(feature={
-            'question': _int64_feature(
-                training_questions_encoded[i].tolist()
-            ),
-            'question_length': _int64_feature([
-                np.asscalar(training_question_lengths[i])
-            ]),
-            'answer': _int64_feature([
-                np.asscalar(training_answers[i])
-            ]),
-            'image_features': _float_feature(image_features.tolist()),
-        }))
-        writer.write(example.SerializeToString())
-        if i % 10 == 0:
-            sys.stdout.write("Processing {}/{} ({:02.2f}% done)\r".format(
-                i, len(training_question_lengths), 
-                i*100.0/len(training_question_lengths)
-            ))
-            sys.stdout.flush()
-    writer.close()
-    print ""
+    # # Write the training data to the file system
+    # print "Writing training data"
+    # writer = tf.python_io.TFRecordWriter("training_data.tfrecords")
+    # training_image_folder_path = image_folder_path + "/train2015"
+    # training_image_feature_cache = {}
+    # for i in range(len(training_question_lengths)):
+    #     image_id = training_questions[i]["image_id"]
+    #     if image_id in training_image_feature_cache:
+    #         image_features = training_image_feature_cache[image_id]
+    #     else:
+    #         image_filename = "abstract_v002_train2015_{:012d}.png".format(image_id)
+    #         image_filepath = training_image_folder_path + "/" + image_filename
+    #         img = image.load_img(image_filepath, target_size=(224, 224))
+    #         x = image.img_to_array(img)
+    #         x = np.expand_dims(x, axis=0)
+    #         x = preprocess_input(x)
+    #         image_features = image_model.predict(x)[0]
+    #         training_image_feature_cache[image_id] = image_features
+    #     example = tf.train.Example(features=tf.train.Features(feature={
+    #         'question': _int64_feature(
+    #             training_questions_encoded[i].tolist()
+    #         ),
+    #         'question_length': _int64_feature([
+    #             np.asscalar(training_question_lengths[i])
+    #         ]),
+    #         'answer': _int64_feature([
+    #             np.asscalar(training_answers[i])
+    #         ]),
+    #         'image_features': _float_feature(image_features.tolist()),
+    #     }))
+    #     writer.write(example.SerializeToString())
+    #     if i % 10 == 0:
+    #         sys.stdout.write("Processing {}/{} ({:02.2f}% done)\r".format(
+    #             i, len(training_question_lengths),
+    #             i*100.0/len(training_question_lengths)
+    #         ))
+    #         sys.stdout.flush()
+    # writer.close()
+    # print ""
 
     # Write the validation data to the file system
     print "Writing validation data"
@@ -224,7 +224,7 @@ if __name__ == '__main__':
             image_features = validation_image_feature_cache[image_id]
         else:
             image_filename = "abstract_v002_val2015_{:012d}.png".format(image_id)
-            image_filepath = training_image_folder_path + "/" + image_filename
+            image_filepath = validation_image_folder_path + "/" + image_filename
             img = image.load_img(image_filepath, target_size=(224, 224))
             x = image.img_to_array(img)
             x = np.expand_dims(x, axis=0)
@@ -233,7 +233,7 @@ if __name__ == '__main__':
             validation_image_feature_cache[image_id] = image_features
         example = tf.train.Example(features=tf.train.Features(feature={
             'question_id': _int64_feature(
-                validation_questions[i]['question_id']
+                [validation_questions[i]['question_id']]
             ),
             'question': _int64_feature(
                 validation_questions_encoded[i].tolist()
@@ -249,7 +249,7 @@ if __name__ == '__main__':
         writer.write(example.SerializeToString())
         if i % 10 == 0:
             sys.stdout.write("Processing {}/{} ({:02.2f}% done)\r".format(
-                i, len(validation_question_lengths), 
+                i, len(validation_question_lengths),
                 i*100.0/len(validation_question_lengths)
             ))
             sys.stdout.flush()
@@ -258,6 +258,7 @@ if __name__ == '__main__':
 
     # Write a json file with some metadata
     metadata = {
+        "K": 1000,
         "max_question_length": max_question_length,
         "input_vocabulary_size": len(vocab),
         "itow": itow,
