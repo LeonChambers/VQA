@@ -6,3 +6,4 @@ Questions
 QuestionTypes
 *.tfrecords
 metadata.json
+*.bak
