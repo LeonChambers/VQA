@@ -230,8 +230,12 @@ def training_ops(batch_size, learning_rate, question_channel_type):
     questions, question_lengths, answers, image_features = training_inputs(
         batch_size
     )
+    truncated_question_lengths = tf.minimum(
+        question_lengths, max_question_length
+    )
     final_output = network_output(
-        questions, question_lengths, image_features, question_channel_type
+        questions, truncated_question_lengths, image_features,
+        question_channel_type
     )
 
     cost = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(final_output, answers))
@@ -260,8 +264,11 @@ def run_training(sess, optimizer, cost, accuracy, batch_size):
 
 def validation_ops(batch_size, question_channel_type):
     question_ids, questions, question_lengths, answer_choices, image_features = validation_inputs(batch_size)
+    truncated_question_lengths = tf.minimum(
+        question_lengths, max_question_length
+    )
     final_output = tf.nn.softmax(network_output(
-        questions, question_lengths, image_features, question_channel_type
+        questions, truncated_question_lengths, image_features, question_channel_type
     ))
     chosen_answers = tf.argmax(
         tf.multiply(
@@ -335,7 +342,9 @@ if __name__ == '__main__':
             results_filename = "Results/{}/epoch_{:03d}.json".format(
                 args.question_channel_type, epoch
             )
-            run_validation(sess, question_ids, chosen_answers, results_filename)
+            run_validation(
+                sess, question_ids, chosen_answers, results_filename
+            )
             run_training(sess, optimizer, cost, accuracy, training_batch_size)
 
         coord.request_stop()

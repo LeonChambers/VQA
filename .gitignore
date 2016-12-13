@@ -7,3 +7,4 @@ QuestionTypes
 *.tfrecords
 metadata.json
 *.bak
+Results
