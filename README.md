@@ -1,3 +1,8 @@
+MIT 6.819 Final Project
+=======================
+
+This branch of the VQA repo contains my implementation of Visual Question answering for my final project for 6.819 (Advances in Computer Vision) at MIT. See the report at [VQA.pdf](./VQA.pdf) for more information.
+
 Python API and Evaluation Code for v1.0 release of the VQA dataset.
 ===================
 
